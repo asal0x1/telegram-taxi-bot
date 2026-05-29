@@ -6,10 +6,12 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, Callb
 import db
 from config import *
 from db import get_user_orders
+from geocoder_coords import coords_address, address_to_coords
 from handlers.driver import *
 from keyboards import *
 from utils import *
-
+from utils import get_tariff_name
+import math
 
 user_language = {}
 
@@ -33,12 +35,12 @@ def start(update: Update, context: CallbackContext):
 
     user = db.get_user(chat_id)
     driver = db.get_driver(chat_id)
-    if user:
-        user_language[chat_id] = user['language']
-
-        return main_menu(update, context)
-    if driver:
-        return choose_order(update, context)
+    # if user:
+    #     user_language[chat_id] = user['language']
+    #
+    #     return main_menu(update, context)
+    # if driver:
+    #     return choose_order(update, context)
 
 
     update.message.reply_text("👤 Ism familyangizni kiriting: ")
@@ -77,28 +79,29 @@ def get_language(update: Update, context: CallbackContext):
 
     user = db.get_user(chat_id)
 
-    if user:
-        db.update_language(chat_id, lang)
+    # if user:
+    #     db.update_language(chat_id, lang)
+    #
+    #     query.message.reply_text("Til muvaffaqiyatli o'zgartirildi ✅")
+    #
+    #     return main_menu(update, context)
 
-        query.message.reply_text("Til muvaffaqiyatli o'zgartirildi ✅")
+    # else:
+    context.user_data['language'] = lang
+    keyboards = [
+        [KeyboardButton("Passenger")],
+        [KeyboardButton("Driver")],
+    ]
 
-        return main_menu(update, context)
-
-    else:
-        keyboards = [
-            [KeyboardButton("Passenger")],
-            [KeyboardButton("Driver")],
-        ]
-
-        query.message.reply_text(
-            "Выберите кем вы являетесь?",
-            reply_markup=ReplyKeyboardMarkup(
-                keyboards,
-                resize_keyboard=True
-            )
+    query.message.reply_text(
+        "Выберите кем вы являетесь?",
+        reply_markup=ReplyKeyboardMarkup(
+            keyboards,
+            resize_keyboard=True
         )
+    )
 
-        return WHO
+    return WHO
 
 def who(update: Update, context: CallbackContext):
     answer = update.message.text
@@ -143,8 +146,8 @@ def get_from_location(update: Update, context: CallbackContext):
     lang = user_language.get(chat_id, "uz")
 
     location = update.message.location
-    context.user_data['from_lat'] = location.latitude
-    context.user_data['from_lon'] = location.longitude
+    context.user_data['from_lat'] = float(update.message.location.latitude)
+    context.user_data['from_lon'] = float(update.message.location.longitude)
 
 
     update.message.reply_text(
@@ -168,21 +171,54 @@ def get_to_location(update: Update, context: CallbackContext):
     )
     return TARIFF
 
+
 def tariff_callback(update, context):
     chat_id = update.effective_user.id
     lang = user_language.get(chat_id, "uz")
     query = update.callback_query
 
-    tariff_id = int(query.data.split('_')[1])
-
     query.answer()
+    tariff_id = int(query.data.split('_')[1])
     get_tariff_name(tariff_id)
 
-    context.user_data['distance_km']  = 0  #
-    context.user_data['total_price'] = 0  #
     context.user_data['status'] = "pending" #
-
     context.user_data['tariff_id'] = tariff_id
+
+    return price_way(tariff_id, update, context)
+
+def get_distance(longitude_start, latitude_start, longitude_end, latitude_end):
+    x1 = float(longitude_start)
+    y1 = float(latitude_start)
+    x2 = float(longitude_end)
+    y2 = float(latitude_end)
+
+    y= math.radians((y2+y1) / 2)
+    x = math.cos(y)
+    n = abs(x1 - x2) * 111000 * x
+    n2 = abs(y1 - y2) * 111000
+    length_way = round(math.sqrt(n * n + n2 * n2))
+
+    return length_way
+    # mumiy narx = boshlang‘ich narx + masofa narxi + qo‘shimcha xizmatla
+def price_way(tariff_id, update: Update, context: CallbackContext):
+    chat_id = update.effective_user.id
+    tariff = db.get_tariff(tariff_id)
+    to_there = address_to_coords( context.user_data['to_location'] )
+    dist = get_distance(context.user_data['from_lon'], context.user_data['from_lat'],
+                        float(to_there[0]), float(to_there[1]))
+    dist_km = round(dist/1000, 2)
+    total_price = tariff['base_price'] + (tariff['price_per_km'] * dist_km)
+    context.user_data['total_price'] = round(total_price)
+
+    print(total_price)
+    print(context.user_data['total_price'])
+    context.user_data['distance_km'] = dist_km
+    print(context.user_data['distance_km'])
+    # Tekshiring:
+    print(context.user_data['from_lon'])  # qancha?
+    print(context.user_data['from_lat'])  # qancha?
+    print(to_there)  # address_to_coords nima qaytaradi?
+
     db.create_order(
         chat_id,
         context.user_data['from_lat'],
@@ -193,12 +229,18 @@ def tariff_callback(update, context):
         context.user_data['distance_km'], #
         context.user_data['total_price'] #
     )
+    from_here = coords_address(context.user_data['from_lon'], context.user_data['from_lat']
+                               )
+    formatted_price = f"{context.user_data['total_price']:,}".replace(",", " ")
 
-    query.message.reply_text(
-        TEXTS[lang]["feedback_received"]
-
+    update.callback_query.message.reply_text(
+        f"Sizning {from_here}  yerdan {context.user_data['to_location']} "
+        f"ga bergan buyurtmangiz qabul qiilindi."
+        f" Masofa: {context.user_data['distance_km']} km. "
+        f"Yo'l haqqi: {formatted_price} so'm. "
     )
     return main_menu(update, context)
+
 
 
 def get_text(chat_id, key):
