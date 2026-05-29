@@ -174,6 +174,15 @@ def get_tariffs():
         ''')
         return cur.fetchall()
 
+def get_tariff(tariff_id):
+    with connect() as conn:
+        cur = conn.cursor()
+        cur.execute('''
+        SELECT * FROM tariffs 
+        WHERE tariff_id = ?
+        ''', (tariff_id,))
+        return cur.fetchone()
+
 def get_active_driver_by_tariff(tariff_id):
     with connect() as conn:
         cur = conn.cursor()
@@ -183,6 +192,14 @@ def get_active_driver_by_tariff(tariff_id):
         ''', (tariff_id,))
         return cur.fetchone()
 
+def get_orders():
+    with connect() as conn:
+        cur = conn.cursor()
+        cur.execute('''
+        SELECT * FROM orders
+        ORDER BY created_at DESC
+        ''')
+        return cur.fetchall()
 
 
 
