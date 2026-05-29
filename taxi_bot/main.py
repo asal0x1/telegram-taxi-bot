@@ -25,6 +25,7 @@ def main():
             MODEL: [MessageHandler(Filters.text, car_model)],
             NUMBER: [MessageHandler(Filters.text, car_number)],
             D_TARIFF: [CallbackQueryHandler(tariff_callback_d)],
+            ASSIGN: [MessageHandler(Filters.text, assaign_drivers)],
 
             MAIN_MENU: [MessageHandler(Filters.text, main_menu_select)],
             SETTING: [ MessageHandler(Filters.text, setting_select)],
