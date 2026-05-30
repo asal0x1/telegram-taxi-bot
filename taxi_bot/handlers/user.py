@@ -35,12 +35,12 @@ def start(update: Update, context: CallbackContext):
 
     user = db.get_user(chat_id)
     driver = db.get_driver(chat_id)
-    # if user:
-    #     user_language[chat_id] = user['language']
-    #
-    #     return main_menu(update, context)
-    # if driver:
-    #     return choose_order(update, context)
+    if user:
+        user_language[chat_id] = user['language']
+    
+        return main_menu(update, context)
+    if driver:
+        return choose_order(update, context)
 
 
     update.message.reply_text("👤 Ism familyangizni kiriting: ")
@@ -79,29 +79,29 @@ def get_language(update: Update, context: CallbackContext):
 
     user = db.get_user(chat_id)
 
-    # if user:
-    #     db.update_language(chat_id, lang)
-    #
-    #     query.message.reply_text("Til muvaffaqiyatli o'zgartirildi ✅")
-    #
-    #     return main_menu(update, context)
+    if user:
+        db.update_language(chat_id, lang)
+    
+        query.message.reply_text("Til muvaffaqiyatli o'zgartirildi ✅")
+    
+        return main_menu(update, context)
 
-    # else:
-    context.user_data['language'] = lang
-    keyboards = [
-        [KeyboardButton("Passenger")],
-        [KeyboardButton("Driver")],
-    ]
-
-    query.message.reply_text(
-        "Выберите кем вы являетесь?",
-        reply_markup=ReplyKeyboardMarkup(
-            keyboards,
-            resize_keyboard=True
+    else:
+        context.user_data['language'] = lang
+        keyboards = [
+            [KeyboardButton("Passenger")],
+            [KeyboardButton("Driver")],
+        ]
+    
+        query.message.reply_text(
+            "Выберите кем вы являетесь?",
+            reply_markup=ReplyKeyboardMarkup(
+                keyboards,
+                resize_keyboard=True
+            )
         )
-    )
 
-    return WHO
+        return WHO
 
 def who(update: Update, context: CallbackContext):
     answer = update.message.text
