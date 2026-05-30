@@ -6,7 +6,7 @@ from utils import *
 
 
 
-TOKEN='8796255361:AAGKCshrlF9PUOZ0Uvy2EyvMZP6hmEWglwA'
+TOKEN='YOUR TOKEN'
 
 
 def main():
