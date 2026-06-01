@@ -15,7 +15,6 @@ import math
 
 user_language = {}
 
-
 NAME = 'USER_NAME'
 PHONE = 'USER_PHONE'
 LANGUAGE = 'USER_LANGUAGE'
@@ -25,8 +24,7 @@ FROM_LOCATION = 'USER_FROM_LOCATION'
 TO_LOCATION = 'USER_TO_LOCATION'
 TARIFF = 'USER_TARIFF'
 SETTING = 'USER_SETTING'
-
-
+CANCEL = 'USER_CANCEL'
 
 
 
@@ -37,7 +35,7 @@ def start(update: Update, context: CallbackContext):
     driver = db.get_driver(chat_id)
     if user:
         user_language[chat_id] = user['language']
-    
+
         return main_menu(update, context)
     if driver:
         return choose_order(update, context)
@@ -81,9 +79,9 @@ def get_language(update: Update, context: CallbackContext):
 
     if user:
         db.update_language(chat_id, lang)
-    
+
         query.message.reply_text("Til muvaffaqiyatli o'zgartirildi ✅")
-    
+
         return main_menu(update, context)
 
     else:
@@ -92,7 +90,7 @@ def get_language(update: Update, context: CallbackContext):
             [KeyboardButton("Passenger")],
             [KeyboardButton("Driver")],
         ]
-    
+
         query.message.reply_text(
             "Выберите кем вы являетесь?",
             reply_markup=ReplyKeyboardMarkup(
@@ -119,8 +117,6 @@ def who(update: Update, context: CallbackContext):
         update.message.reply_text(" What is your car model ")
         return MODEL
 
-
-
 def main_menu(update: Update, context: CallbackContext):
     chat_id = update.effective_user.id
     lang = user_language.get(chat_id, "uz")
@@ -137,8 +133,6 @@ def main_menu(update: Update, context: CallbackContext):
         update.callback_query.message.reply_text(get_text(chat_id, "start"), reply_markup=reply_markup)
 
     return MAIN_MENU
-
-
 
 
 def get_from_location(update: Update, context: CallbackContext):
@@ -219,7 +213,7 @@ def price_way(tariff_id, update: Update, context: CallbackContext):
     print(context.user_data['from_lat'])  # qancha?
     print(to_there)  # address_to_coords nima qaytaradi?
 
-    db.create_order(
+    order_id = db.create_order(
         chat_id,
         context.user_data['from_lat'],
         context.user_data['from_lon'],
@@ -229,6 +223,7 @@ def price_way(tariff_id, update: Update, context: CallbackContext):
         context.user_data['distance_km'], #
         context.user_data['total_price'] #
     )
+    context.user_data['order_id'] = order_id
     from_here = coords_address(context.user_data['from_lon'], context.user_data['from_lat']
                                )
     formatted_price = f"{context.user_data['total_price']:,}".replace(",", " ")
@@ -237,10 +232,25 @@ def price_way(tariff_id, update: Update, context: CallbackContext):
         f"Sizning {from_here}  yerdan {context.user_data['to_location']} "
         f"ga bergan buyurtmangiz qabul qiilindi."
         f" Masofa: {context.user_data['distance_km']} km. "
-        f"Yo'l haqqi: {formatted_price} so'm. "
+        f"Yo'l haqqi: {formatted_price} so'm. ",
+        reply_markup= ReplyKeyboardMarkup(
+        [
+            [KeyboardButton("Buyurmani bekor qilish")]
+        ],
+        resize_keyboard=True,
     )
-    return main_menu(update, context)
+    )
 
+    return CANCEL
+
+def cancel(update, context):
+    chat_id = update.effective_user.id
+    text = update.message.text
+    if text == "Buyurmani bekor qilish":
+        order_id = context.user_data.get('order_id')
+        db.delete_order(order_id)
+        update.message.reply_text("Buyurtma bekor qilindi ❌")
+        return main_menu(update, context)
 
 
 def get_text(chat_id, key):
