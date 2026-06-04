@@ -138,7 +138,7 @@ def completed(update, context):
             "✅ Buyurtma muvaffaqiyatli yopildi.\n"
             "🚖 Yangi buyurtmalarni qabul qilishga tayyorsiz.\n\n"
             "🙏 Hamkorligingiz uchun rahmat!")
-        db.delete_order(order_id)
+        db.completed(order_id)
         return choose_order(update, context)
 
 def notify_user(update, context, user_id, driver_id):
