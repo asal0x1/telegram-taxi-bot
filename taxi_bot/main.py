@@ -3,7 +3,7 @@ from handlers.user import *
 from handlers.driver import *
 from keyboards import *
 from utils import *
-
+from handlers.admin import *
 
 
 TOKEN='YOUR TOKEN'
@@ -40,8 +40,18 @@ def main():
     fallbacks=[]
     )
 
+    admin_conv = ConversationHandler(
+        entry_points=[CommandHandler('admin', admin_login)],
+        states={
+            ADMIN_PASSWORD_ST: [MessageHandler(Filters.text & ~Filters.command, check_admin_password)],
+            ADMIN_MENU: [MessageHandler(Filters.text & ~Filters.command, admin_menu_select)],
+
+        },
+        fallbacks=[CommandHandler('cancel', admin_logout)]
+    )
 
     dp.add_handler(conv)
+    dp.add_handler(admin_conv)
     updater.start_polling()
     updater.idle()
 
